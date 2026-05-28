@@ -120,6 +120,10 @@ body {
   background: #d5e7f8;
 }
 
+#soundBtn {
+  background: #9ce0ff;
+}
+
 .btn:hover,
 .btn:focus-visible {
   transform: translateY(-1px);

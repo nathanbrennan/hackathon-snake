@@ -9,6 +9,7 @@ const statusText = document.getElementById("statusText");
 const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const restartBtn = document.getElementById("restartBtn");
+const soundBtn = document.getElementById("soundBtn");
 
 const BOARD_SIZE = 20;
 const CELL_SIZE = canvas.width / BOARD_SIZE;
@@ -29,10 +30,72 @@ let nextDirection;
 let food;
 let score;
 let highScore = Number(localStorage.getItem("snakeBest")) || 0;
+let soundEnabled = localStorage.getItem("snakeSound") !== "off";
 let gameOver;
 let isRunning;
 let isPaused;
 let loopTimer;
+let audioCtx;
+
+function updateSoundButton() {
+  soundBtn.textContent = `Sound: ${soundEnabled ? "On" : "Off"}`;
+  soundBtn.setAttribute("aria-pressed", String(soundEnabled));
+}
+
+function ensureAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new window.AudioContext();
+  }
+
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}
+
+function playTone({ frequency, duration, type = "sine", volume = 0.045, when = 0 }) {
+  if (!soundEnabled || !audioCtx) {
+    return;
+  }
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, audioCtx.currentTime + when);
+  gain.gain.setValueAtTime(0.0001, audioCtx.currentTime + when);
+  gain.gain.exponentialRampToValueAtTime(volume, audioCtx.currentTime + when + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + when + duration);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start(audioCtx.currentTime + when);
+  osc.stop(audioCtx.currentTime + when + duration + 0.02);
+}
+
+function playEatSound() {
+  playTone({ frequency: 660, duration: 0.06, type: "square", volume: 0.04 });
+  playTone({ frequency: 920, duration: 0.08, type: "triangle", volume: 0.038, when: 0.045 });
+}
+
+function playStartSound() {
+  playTone({ frequency: 392, duration: 0.08, type: "triangle", volume: 0.035 });
+  playTone({ frequency: 523, duration: 0.1, type: "triangle", volume: 0.035, when: 0.07 });
+}
+
+function playPauseSound(paused) {
+  if (paused) {
+    playTone({ frequency: 280, duration: 0.08, type: "sine", volume: 0.03 });
+  } else {
+    playTone({ frequency: 420, duration: 0.08, type: "sine", volume: 0.03 });
+  }
+}
+
+function playGameOverSound() {
+  playTone({ frequency: 380, duration: 0.11, type: "sawtooth", volume: 0.035 });
+  playTone({ frequency: 260, duration: 0.13, type: "sawtooth", volume: 0.035, when: 0.09 });
+  playTone({ frequency: 180, duration: 0.16, type: "sawtooth", volume: 0.035, when: 0.2 });
+}
 
 function initGameState() {
   snake = [
@@ -84,6 +147,8 @@ function setStatus(text) {
 }
 
 function startGame() {
+  ensureAudioContext();
+
   if (gameOver) {
     initGameState();
   }
@@ -96,10 +161,13 @@ function startGame() {
   isPaused = false;
   clearTimeout(loopTimer);
   gameLoop();
+  playStartSound();
   setStatus("Use Arrow keys or WASD to move.");
 }
 
 function pauseGame() {
+  ensureAudioContext();
+
   if (!isRunning || gameOver) {
     return;
   }
@@ -108,16 +176,20 @@ function pauseGame() {
   if (isPaused) {
     clearTimeout(loopTimer);
     setStatus("Paused. Press Space to continue.");
+    playPauseSound(true);
   } else {
     gameLoop();
     setStatus("Back in action.");
+    playPauseSound(false);
   }
 }
 
 function restartGame() {
+  ensureAudioContext();
   clearTimeout(loopTimer);
   isRunning = false;
   initGameState();
+  playStartSound();
   setStatus("Restarted. Press Start or Space.");
 }
 
@@ -135,6 +207,13 @@ function queueDirection(newDirection) {
 
 function handleInput(event) {
   const key = event.key.toLowerCase();
+
+  if (event.key === "m") {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem("snakeSound", soundEnabled ? "on" : "off");
+    updateSoundButton();
+    return;
+  }
 
   if (key === " " || key === "spacebar") {
     event.preventDefault();
@@ -197,6 +276,7 @@ function step() {
     }
 
     updateHud();
+    playGameOverSound();
     setStatus("Game over. Press Restart to try again.");
     draw();
     return;
@@ -209,6 +289,7 @@ function step() {
   if (ateFood) {
     score += 10;
     food = generateFood();
+    playEatSound();
 
     if (score > highScore) {
       highScore = score;
@@ -305,6 +386,12 @@ function gameLoop() {
 startBtn.addEventListener("click", startGame);
 pauseBtn.addEventListener("click", pauseGame);
 restartBtn.addEventListener("click", restartGame);
+soundBtn.addEventListener("click", () => {
+  ensureAudioContext();
+  soundEnabled = !soundEnabled;
+  localStorage.setItem("snakeSound", soundEnabled ? "on" : "off");
+  updateSoundButton();
+});
 
 document.addEventListener("keydown", handleInput);
 
@@ -322,4 +409,5 @@ document.querySelectorAll(".touch-controls .dpad").forEach((button) => {
 });
 
 highScoreEl.textContent = String(highScore);
+updateSoundButton();
 initGameState();
