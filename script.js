@@ -8,7 +8,6 @@ const statusText = document.getElementById("statusText");
 
 const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
-const restartBtn = document.getElementById("restartBtn");
 const soundBtn = document.getElementById("soundBtn");
 const difficultySelect = document.getElementById("difficultySelect");
 
@@ -44,6 +43,20 @@ let audioCtx;
 
 if (!DIFFICULTIES[difficulty]) {
   difficulty = "normal";
+}
+
+function updateStartButtonLabel() {
+  if (gameOver) {
+    startBtn.textContent = "Restart";
+    return;
+  }
+
+  if (isRunning) {
+    startBtn.textContent = "Restart";
+    return;
+  }
+
+  startBtn.textContent = "Start";
 }
 
 function currentDifficulty() {
@@ -122,7 +135,9 @@ function initGameState() {
   food = generateFood();
   score = 0;
   gameOver = false;
+  isRunning = false;
   isPaused = false;
+  updateStartButtonLabel();
   updateHud();
   setStatus("Press Start or Space to play.");
   draw();
@@ -173,6 +188,7 @@ function startGame() {
 
   isRunning = true;
   isPaused = false;
+  updateStartButtonLabel();
   clearTimeout(loopTimer);
   gameLoop();
   playStartSound();
@@ -201,10 +217,22 @@ function pauseGame() {
 function restartGame() {
   ensureAudioContext();
   clearTimeout(loopTimer);
-  isRunning = false;
   initGameState();
+  isRunning = true;
+  isPaused = false;
+  updateStartButtonLabel();
+  gameLoop();
   playStartSound();
-  setStatus(`Restarted in ${currentDifficulty().label} mode. Press Start or Space.`);
+  setStatus(`Restarted in ${currentDifficulty().label} mode.`);
+}
+
+function handleStartButton() {
+  if (isRunning && !gameOver) {
+    restartGame();
+    return;
+  }
+
+  startGame();
 }
 
 function isOppositeDirection(candidate) {
@@ -283,6 +311,7 @@ function step() {
     gameOver = true;
     isRunning = false;
     clearTimeout(loopTimer);
+    updateStartButtonLabel();
 
     if (score > highScore) {
       highScore = score;
@@ -397,9 +426,8 @@ function gameLoop() {
   loopTimer = setTimeout(gameLoop, tickRateMs());
 }
 
-startBtn.addEventListener("click", startGame);
+startBtn.addEventListener("click", handleStartButton);
 pauseBtn.addEventListener("click", pauseGame);
-restartBtn.addEventListener("click", restartGame);
 soundBtn.addEventListener("click", () => {
   ensureAudioContext();
   soundEnabled = !soundEnabled;
