@@ -8,73 +8,81 @@
       name="description"
       content="Play a polished, classic Snake game in your browser."
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Bungee:wght@400&family=Space+Grotesk:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="app-shell">
       <section class="hud-card" aria-label="Game info">
-        <h1 class="title">HACKATHON SNAKE</h1>
-        <p class="subtitle">Eat. Grow. Survive.</p>
-
-        <div class="stats-row" role="status" aria-live="polite">
-          <div class="stat-pill">
-            <span class="label">Score</span>
-            <span id="score" class="value">0</span>
-          </div>
-          <div class="stat-pill">
-            <span class="label">Best</span>
-            <span id="highScore" class="value">0</span>
-          </div>
-          <div class="stat-pill">
-            <span class="label">Speed</span>
-            <span id="speed" class="value">0</span>
-          </div>
+        <div class="window-titlebar" aria-hidden="true">
+          <span class="titlebar-text">Snake Controls</span>
+          <span class="titlebar-buttons">_ □ ×</span>
         </div>
 
-        <div class="actions">
-          <button id="startBtn" class="btn">Start</button>
-          <button id="pauseBtn" class="btn secondary">Pause</button>
-          <button id="restartBtn" class="btn secondary">Restart</button>
-          <button id="soundBtn" class="btn secondary" aria-pressed="true">Sound: On</button>
-        </div>
+        <div class="window-content">
+          <h1 class="title">Hackathon Snake</h1>
+          <p class="subtitle">Eat. Grow. Survive.</p>
 
-        <div class="difficulty-row">
-          <label for="difficultySelect">Difficulty</label>
-          <select id="difficultySelect" aria-label="Select difficulty">
-            <option value="easy">Easy</option>
-            <option value="normal">Normal</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
+          <div class="stats-row" role="status" aria-live="polite">
+            <div class="stat-pill">
+              <span class="label">Score</span>
+              <span id="score" class="value">0</span>
+            </div>
+            <div class="stat-pill">
+              <span class="label">Best</span>
+              <span id="highScore" class="value">0</span>
+            </div>
+            <div class="stat-pill">
+              <span class="label">Speed</span>
+              <span id="speed" class="value">0</span>
+            </div>
+          </div>
 
-        <p id="statusText" class="status-text">Press Start or hit Space.</p>
+          <div class="actions">
+            <button id="startBtn" class="btn">Start</button>
+            <button id="pauseBtn" class="btn secondary">Pause</button>
+            <button id="restartBtn" class="btn secondary">Restart</button>
+            <button id="soundBtn" class="btn secondary" aria-pressed="true">Sound: On</button>
+          </div>
+
+          <div class="difficulty-row">
+            <label for="difficultySelect">Difficulty</label>
+            <select id="difficultySelect" aria-label="Select difficulty">
+              <option value="easy">Easy</option>
+              <option value="normal">Normal</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          <p id="statusText" class="status-text">Press Start or hit Space.</p>
+        </div>
       </section>
 
       <section class="game-card" aria-label="Snake game board">
-        <canvas
-          id="gameCanvas"
-          width="480"
-          height="480"
-          role="img"
-          aria-label="Snake game area"
-        ></canvas>
-
-        <div class="touch-controls" aria-label="Touch controls">
-          <button data-dir="up" class="dpad up" aria-label="Move up">▲</button>
-          <button data-dir="left" class="dpad left" aria-label="Move left">◀</button>
-          <button data-dir="down" class="dpad down" aria-label="Move down">▼</button>
-          <button data-dir="right" class="dpad right" aria-label="Move right">▶</button>
+        <div class="window-titlebar" aria-hidden="true">
+          <span class="titlebar-text">Snake.exe</span>
+          <span class="titlebar-buttons">_ □ ×</span>
         </div>
 
-        <p class="controls-help">
-          Controls: Arrow keys / WASD to move, Space to pause.
-        </p>
+        <div class="window-content">
+          <canvas
+            id="gameCanvas"
+            width="480"
+            height="480"
+            role="img"
+            aria-label="Snake game area"
+          ></canvas>
+
+          <div class="touch-controls" aria-label="Touch controls">
+            <button data-dir="up" class="dpad up" aria-label="Move up">▲</button>
+            <button data-dir="left" class="dpad left" aria-label="Move left">◀</button>
+            <button data-dir="down" class="dpad down" aria-label="Move down">▼</button>
+            <button data-dir="right" class="dpad right" aria-label="Move right">▶</button>
+          </div>
+
+          <p class="controls-help">
+            Controls: Arrow keys / WASD to move, Space to pause.
+          </p>
+        </div>
       </section>
     </main>
 
