@@ -215,6 +215,7 @@ body::after {
   display: grid;
   justify-items: center;
   gap: 0.75rem;
+  color: #ffffff;
 }
 
 #gameCanvas {
@@ -231,7 +232,7 @@ body::after {
 
 .controls-help {
   margin: 0;
-  color: #36495f;
+  color: #ffffff;
   text-align: center;
   font-size: 0.8rem;
 }

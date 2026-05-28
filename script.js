@@ -20,6 +20,12 @@ const DIFFICULTIES = {
   hard: { label: "Hard", baseTickMs: 130, minTickMs: 62, speedStepMs: 6 },
 };
 
+const ENEMY_SETTINGS = {
+  easy: { count: 1, moveEveryTicks: 4 },
+  normal: { count: 2, moveEveryTicks: 3 },
+  hard: { count: 3, moveEveryTicks: 2 },
+};
+
 const DIRECTIONS = {
   up: { x: 0, y: -1 },
   down: { x: 0, y: 1 },
@@ -31,6 +37,8 @@ let snake;
 let direction;
 let nextDirection;
 let food;
+let enemies;
+let tickCount;
 let score;
 let highScore = Number(localStorage.getItem("snakeBest")) || 0;
 let soundEnabled = localStorage.getItem("snakeSound") !== "off";
@@ -61,6 +69,21 @@ function updateStartButtonLabel() {
 
 function currentDifficulty() {
   return DIFFICULTIES[difficulty];
+}
+
+function currentEnemySettings() {
+  return ENEMY_SETTINGS[difficulty];
+}
+
+function positionKey(position) {
+  return `${position.x},${position.y}`;
+}
+
+function randomBoardCell() {
+  return {
+    x: Math.floor(Math.random() * BOARD_SIZE),
+    y: Math.floor(Math.random() * BOARD_SIZE),
+  };
 }
 
 function updateSoundButton() {
@@ -132,7 +155,10 @@ function initGameState() {
 
   direction = { ...DIRECTIONS.right };
   nextDirection = { ...DIRECTIONS.right };
+  enemies = [];
   food = generateFood();
+  enemies = generateEnemies();
+  tickCount = 0;
   score = 0;
   gameOver = false;
   isRunning = false;
@@ -144,16 +170,35 @@ function initGameState() {
 }
 
 function generateFood() {
-  const occupied = new Set(snake.map((segment) => `${segment.x},${segment.y}`));
+  const occupied = new Set(snake.map((segment) => positionKey(segment)));
+  enemies.forEach((enemy) => occupied.add(positionKey(enemy)));
 
-  let x;
-  let y;
+  let candidate;
   do {
-    x = Math.floor(Math.random() * BOARD_SIZE);
-    y = Math.floor(Math.random() * BOARD_SIZE);
-  } while (occupied.has(`${x},${y}`));
+    candidate = randomBoardCell();
+  } while (occupied.has(positionKey(candidate)));
 
-  return { x, y };
+  return candidate;
+}
+
+function generateEnemies() {
+  const settings = currentEnemySettings();
+  const occupied = new Set(snake.map((segment) => positionKey(segment)));
+  occupied.add(positionKey(food));
+
+  const spawned = [];
+  while (spawned.length < settings.count) {
+    const candidate = randomBoardCell();
+    const key = positionKey(candidate);
+    if (occupied.has(key)) {
+      continue;
+    }
+
+    occupied.add(key);
+    spawned.push(candidate);
+  }
+
+  return spawned;
 }
 
 function tickRateMs() {
@@ -296,6 +341,69 @@ function collisionWithSnake(head) {
   return snake.some((segment) => segment.x === head.x && segment.y === head.y);
 }
 
+function collisionWithEnemy(cell) {
+  return enemies.some((enemy) => enemy.x === cell.x && enemy.y === cell.y);
+}
+
+function moveEnemies() {
+  tickCount += 1;
+
+  if (tickCount % currentEnemySettings().moveEveryTicks !== 0) {
+    return;
+  }
+
+  const occupiedByEnemies = new Set(enemies.map((enemy) => positionKey(enemy)));
+
+  enemies = enemies.map((enemy) => {
+    occupiedByEnemies.delete(positionKey(enemy));
+
+    const options = Object.values(DIRECTIONS)
+      .map((dir) => ({ x: enemy.x + dir.x, y: enemy.y + dir.y }))
+      .filter((cell) => {
+        const inBounds = cell.x >= 0 && cell.y >= 0 && cell.x < BOARD_SIZE && cell.y < BOARD_SIZE;
+        if (!inBounds) {
+          return false;
+        }
+
+        if (cell.x === food.x && cell.y === food.y) {
+          return false;
+        }
+
+        return !occupiedByEnemies.has(positionKey(cell));
+      });
+
+    if (options.length === 0) {
+      occupiedByEnemies.add(positionKey(enemy));
+      return enemy;
+    }
+
+    const picked = options[Math.floor(Math.random() * options.length)];
+    occupiedByEnemies.add(positionKey(picked));
+    return picked;
+  });
+}
+
+function enemyHitSnake() {
+  return enemies.some((enemy) => snake.some((segment) => segment.x === enemy.x && segment.y === enemy.y));
+}
+
+function endGame(message) {
+  gameOver = true;
+  isRunning = false;
+  clearTimeout(loopTimer);
+  updateStartButtonLabel();
+
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("snakeBest", String(highScore));
+  }
+
+  updateHud();
+  playGameOverSound();
+  setStatus(message);
+  draw();
+}
+
 function step() {
   direction = { ...nextDirection };
 
@@ -306,22 +414,10 @@ function step() {
 
   const hitWall = head.x < 0 || head.y < 0 || head.x >= BOARD_SIZE || head.y >= BOARD_SIZE;
   const hitSelf = collisionWithSnake(head);
+  const hitEnemy = collisionWithEnemy(head);
 
-  if (hitWall || hitSelf) {
-    gameOver = true;
-    isRunning = false;
-    clearTimeout(loopTimer);
-    updateStartButtonLabel();
-
-    if (score > highScore) {
-      highScore = score;
-      localStorage.setItem("snakeBest", String(highScore));
-    }
-
-    updateHud();
-    playGameOverSound();
-    setStatus("Game over. Press Restart to try again.");
-    draw();
+  if (hitWall || hitSelf || hitEnemy) {
+    endGame("Game over. Watch out for enemies and press Restart to try again.");
     return;
   }
 
@@ -340,6 +436,12 @@ function step() {
     }
   } else {
     snake.pop();
+  }
+
+  moveEnemies();
+  if (enemyHitSnake()) {
+    endGame("An enemy got you. Press Restart to try again.");
+    return;
   }
 
   updateHud();
@@ -384,6 +486,25 @@ function drawFood() {
   ctx.fill();
 }
 
+function drawEnemies() {
+  enemies.forEach((enemy) => {
+    const x = enemy.x * CELL_SIZE;
+    const y = enemy.y * CELL_SIZE;
+
+    ctx.fillStyle = "#ff4a4a";
+    ctx.fillRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+
+    ctx.strokeStyle = "#ffdede";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 5, y + 5);
+    ctx.lineTo(x + CELL_SIZE - 5, y + CELL_SIZE - 5);
+    ctx.moveTo(x + CELL_SIZE - 5, y + 5);
+    ctx.lineTo(x + 5, y + CELL_SIZE - 5);
+    ctx.stroke();
+  });
+}
+
 function drawOverlay() {
   if (!gameOver) {
     return;
@@ -412,6 +533,7 @@ function draw() {
 
   drawGrid();
   drawFood();
+  drawEnemies();
   drawSnake();
   drawOverlay();
 }
@@ -443,7 +565,10 @@ difficultySelect.addEventListener("change", () => {
 
   difficulty = selected;
   localStorage.setItem("snakeDifficulty", difficulty);
+  enemies = generateEnemies();
+  tickCount = 0;
   updateHud();
+  draw();
 
   if (isRunning && !isPaused && !gameOver) {
     clearTimeout(loopTimer);
