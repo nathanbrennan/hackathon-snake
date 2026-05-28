@@ -114,11 +114,25 @@ jobs:
           path: test-results/
           if-no-files-found: warn
 
+      - name: Prepare Pages content (site + report)
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          rm -rf pages-site
+          mkdir -p pages-site/playwright-report
+
+          cp index.html pages-site/
+          cp style.css pages-site/
+          cp script.js pages-site/
+          cp -R playwright-report/. pages-site/playwright-report/
+
+          # Keep Pages from processing files with Jekyll.
+          touch pages-site/.nojekyll
+
       - name: Upload Pages artifact (Playwright report)
         if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: actions/upload-pages-artifact@v3
         with:
-          path: playwright-report/
+          path: pages-site/
 
       - name: Deploy Playwright report to GitHub Pages
         id: deploy_pages
@@ -130,7 +144,8 @@ jobs:
         run: |
           if [ "${{ steps.deploy_pages.outcome }}" = "success" ]; then
             echo "### Playwright Report" >> "$GITHUB_STEP_SUMMARY"
-            echo "View report online: ${{ steps.deploy_pages.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "View report online: ${{ steps.deploy_pages.outputs.page_url }}playwright-report/" >> "$GITHUB_STEP_SUMMARY"
+            echo "Game root remains at: ${{ steps.deploy_pages.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### Playwright Report" >> "$GITHUB_STEP_SUMMARY"
             echo "Online report deploy runs on main/master. For this run, use uploaded artifacts." >> "$GITHUB_STEP_SUMMARY"
