@@ -1,5 +1,10 @@
 name: Validate Snake App
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 on:
   push:
     branches:
@@ -11,6 +16,9 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy_pages.outputs.page_url }}
 
     steps:
       - name: Checkout repository
@@ -49,6 +57,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run UI interaction checks with Playwright report
+        id: playwright_tests
+        continue-on-error: true
         run: |
           mkdir -p .github/tests
 
@@ -103,3 +113,31 @@ jobs:
           name: playwright-screenshots
           path: test-results/
           if-no-files-found: warn
+
+      - name: Upload Pages artifact (Playwright report)
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: playwright-report/
+
+      - name: Deploy Playwright report to GitHub Pages
+        id: deploy_pages
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: actions/deploy-pages@v4
+
+      - name: Add report link to job summary
+        if: always()
+        run: |
+          if [ "${{ steps.deploy_pages.outcome }}" = "success" ]; then
+            echo "### Playwright Report" >> "$GITHUB_STEP_SUMMARY"
+            echo "View report online: ${{ steps.deploy_pages.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Playwright Report" >> "$GITHUB_STEP_SUMMARY"
+            echo "Online report deploy runs on main/master. For this run, use uploaded artifacts." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Fail workflow if UI tests failed
+        if: steps.playwright_tests.outcome == 'failure'
+        run: |
+          echo "Playwright UI interaction checks failed."
+          exit 1
