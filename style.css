@@ -137,6 +137,34 @@ body {
   color: #d7eaff;
 }
 
+.difficulty-row {
+  margin-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.difficulty-row label {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.difficulty-row select {
+  border: 1px solid rgba(194, 228, 255, 0.45);
+  border-radius: 0.6rem;
+  background: rgba(210, 233, 252, 0.14);
+  color: var(--ink);
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.difficulty-row select:focus-visible {
+  outline: 2px solid rgba(156, 224, 255, 0.7);
+  outline-offset: 2px;
+}
+
 .game-card {
   padding: 1rem;
   display: grid;

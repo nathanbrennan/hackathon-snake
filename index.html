@@ -33,7 +33,7 @@
           </div>
           <div class="stat-pill">
             <span class="label">Speed</span>
-            <span id="speed" class="value">1x</span>
+            <span id="speed" class="value">0</span>
           </div>
         </div>
 
@@ -42,6 +42,15 @@
           <button id="pauseBtn" class="btn secondary">Pause</button>
           <button id="restartBtn" class="btn secondary">Restart</button>
           <button id="soundBtn" class="btn secondary" aria-pressed="true">Sound: On</button>
+        </div>
+
+        <div class="difficulty-row">
+          <label for="difficultySelect">Difficulty</label>
+          <select id="difficultySelect" aria-label="Select difficulty">
+            <option value="easy">Easy</option>
+            <option value="normal">Normal</option>
+            <option value="hard">Hard</option>
+          </select>
         </div>
 
         <p id="statusText" class="status-text">Press Start or hit Space.</p>

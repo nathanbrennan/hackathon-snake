@@ -10,12 +10,16 @@ const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const restartBtn = document.getElementById("restartBtn");
 const soundBtn = document.getElementById("soundBtn");
+const difficultySelect = document.getElementById("difficultySelect");
 
 const BOARD_SIZE = 20;
 const CELL_SIZE = canvas.width / BOARD_SIZE;
-const BASE_TICK_MS = 160;
-const MIN_TICK_MS = 78;
-const SPEED_STEP_MS = 5;
+
+const DIFFICULTIES = {
+  easy: { label: "Easy", baseTickMs: 190, minTickMs: 110, speedStepMs: 3 },
+  normal: { label: "Normal", baseTickMs: 160, minTickMs: 78, speedStepMs: 5 },
+  hard: { label: "Hard", baseTickMs: 130, minTickMs: 62, speedStepMs: 6 },
+};
 
 const DIRECTIONS = {
   up: { x: 0, y: -1 },
@@ -31,11 +35,20 @@ let food;
 let score;
 let highScore = Number(localStorage.getItem("snakeBest")) || 0;
 let soundEnabled = localStorage.getItem("snakeSound") !== "off";
+let difficulty = localStorage.getItem("snakeDifficulty") || "normal";
 let gameOver;
 let isRunning;
 let isPaused;
 let loopTimer;
 let audioCtx;
+
+if (!DIFFICULTIES[difficulty]) {
+  difficulty = "normal";
+}
+
+function currentDifficulty() {
+  return DIFFICULTIES[difficulty];
+}
 
 function updateSoundButton() {
   soundBtn.textContent = `Sound: ${soundEnabled ? "On" : "Off"}`;
@@ -129,17 +142,18 @@ function generateFood() {
 }
 
 function tickRateMs() {
-  return Math.max(MIN_TICK_MS, BASE_TICK_MS - score * SPEED_STEP_MS);
+  const mode = currentDifficulty();
+  return Math.max(mode.minTickMs, mode.baseTickMs - score * mode.speedStepMs);
 }
 
-function speedMultiplier() {
-  return (BASE_TICK_MS / tickRateMs()).toFixed(1);
+function cellsPerSecond() {
+  return String(Math.round(1000 / tickRateMs()));
 }
 
 function updateHud() {
   scoreEl.textContent = String(score);
   highScoreEl.textContent = String(highScore);
-  speedEl.textContent = `${speedMultiplier()}x`;
+  speedEl.textContent = cellsPerSecond();
 }
 
 function setStatus(text) {
@@ -162,7 +176,7 @@ function startGame() {
   clearTimeout(loopTimer);
   gameLoop();
   playStartSound();
-  setStatus("Use Arrow keys or WASD to move.");
+  setStatus(`Use Arrow keys or WASD to move. ${currentDifficulty().label} mode.`);
 }
 
 function pauseGame() {
@@ -190,7 +204,7 @@ function restartGame() {
   isRunning = false;
   initGameState();
   playStartSound();
-  setStatus("Restarted. Press Start or Space.");
+  setStatus(`Restarted in ${currentDifficulty().label} mode. Press Start or Space.`);
 }
 
 function isOppositeDirection(candidate) {
@@ -208,7 +222,7 @@ function queueDirection(newDirection) {
 function handleInput(event) {
   const key = event.key.toLowerCase();
 
-  if (event.key === "m") {
+  if (key === "m") {
     soundEnabled = !soundEnabled;
     localStorage.setItem("snakeSound", soundEnabled ? "on" : "off");
     updateSoundButton();
@@ -393,6 +407,26 @@ soundBtn.addEventListener("click", () => {
   updateSoundButton();
 });
 
+difficultySelect.addEventListener("change", () => {
+  const selected = difficultySelect.value;
+  if (!DIFFICULTIES[selected]) {
+    return;
+  }
+
+  difficulty = selected;
+  localStorage.setItem("snakeDifficulty", difficulty);
+  updateHud();
+
+  if (isRunning && !isPaused && !gameOver) {
+    clearTimeout(loopTimer);
+    gameLoop();
+  }
+
+  if (!gameOver) {
+    setStatus(`Difficulty set to ${currentDifficulty().label}.`);
+  }
+});
+
 document.addEventListener("keydown", handleInput);
 
 document.querySelectorAll(".touch-controls .dpad").forEach((button) => {
@@ -410,4 +444,5 @@ document.querySelectorAll(".touch-controls .dpad").forEach((button) => {
 
 highScoreEl.textContent = String(highScore);
 updateSoundButton();
+difficultySelect.value = difficulty;
 initGameState();
