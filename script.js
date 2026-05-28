@@ -48,6 +48,7 @@ let isRunning;
 let isPaused;
 let loopTimer;
 let audioCtx;
+let topWindowZ = 5;
 
 if (!DIFFICULTIES[difficulty]) {
   difficulty = "normal";
@@ -548,6 +549,88 @@ function gameLoop() {
   loopTimer = setTimeout(gameLoop, tickRateMs());
 }
 
+function enableWindowDrag(windowElement) {
+  const titlebar = windowElement.querySelector(".window-titlebar");
+  if (!titlebar) {
+    return;
+  }
+
+  let activePointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let originX = 0;
+  let originY = 0;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  function applyPosition() {
+    windowElement.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+  }
+
+  function resetPosition() {
+    offsetX = 0;
+    offsetY = 0;
+    windowElement.style.transform = "";
+    windowElement.style.zIndex = "";
+    windowElement.classList.remove("dragging-window");
+    activePointerId = null;
+  }
+
+  titlebar.addEventListener("pointerdown", (event) => {
+    if (window.innerWidth < 900) {
+      return;
+    }
+
+    if (event.button !== 0) {
+      return;
+    }
+
+    activePointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    originX = offsetX;
+    originY = offsetY;
+
+    topWindowZ += 1;
+    windowElement.style.zIndex = String(topWindowZ);
+    windowElement.classList.add("dragging-window");
+    titlebar.setPointerCapture(activePointerId);
+    event.preventDefault();
+  });
+
+  titlebar.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== activePointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+
+    offsetX = originX + deltaX;
+    offsetY = originY + deltaY;
+    applyPosition();
+  });
+
+  function endDrag(event) {
+    if (event.pointerId !== activePointerId) {
+      return;
+    }
+
+    windowElement.classList.remove("dragging-window");
+    activePointerId = null;
+  }
+
+  titlebar.addEventListener("pointerup", endDrag);
+  titlebar.addEventListener("pointercancel", endDrag);
+  titlebar.addEventListener("lostpointercapture", endDrag);
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth < 900) {
+      resetPosition();
+    }
+  });
+}
+
 startBtn.addEventListener("click", handleStartButton);
 pauseBtn.addEventListener("click", pauseGame);
 soundBtn.addEventListener("click", () => {
@@ -594,6 +677,9 @@ document.querySelectorAll(".touch-controls .dpad").forEach((button) => {
     queueDirection(dir);
   });
 });
+
+enableWindowDrag(document.querySelector(".hud-card"));
+enableWindowDrag(document.querySelector(".game-card"));
 
 highScoreEl.textContent = String(highScore);
 updateSoundButton();

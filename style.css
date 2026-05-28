@@ -83,6 +83,7 @@ body::after {
     inset 1px 1px 0 var(--xp-white),
     inset -1px -1px 0 #b8b4a2,
     2px 2px 0 rgba(0, 0, 0, 0.34);
+  position: relative;
 }
 
 .window-titlebar {
@@ -94,6 +95,13 @@ body::after {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #0d2e7f;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.dragging-window .window-titlebar {
+  cursor: grabbing;
 }
 
 .titlebar-text {
