@@ -41,62 +41,60 @@ jobs:
           grep -q '<canvas' /tmp/page.html
 
       - name: Install Playwright browser
-        run: npx --yes playwright@1.54.2 install --with-deps chromium
+        run: npx --yes --package=playwright@1.54.2 playwright install --with-deps chromium
 
-      - name: Run UI interaction checks
+      - name: Run UI interaction checks with Playwright report
         run: |
+          mkdir -p .github/tests
+
+          cat > .github/tests/ui.spec.js <<'EOF'
+          const { test, expect } = require('@playwright/test');
+
+          test('snake app basic interactions', async ({ page }) => {
+            await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' });
+
+            await expect(page).toHaveTitle(/Hackathon Snake/);
+            await expect(page.locator('#gameCanvas')).toBeVisible();
+
+            await page.screenshot({ path: 'test-results/01-initial-ui.png', fullPage: true });
+
+            await page.click('#startBtn');
+            await page.waitForTimeout(250);
+            await expect(page.locator('#startBtn')).toHaveText('Restart');
+
+            await page.click('#pauseBtn');
+            await expect(page.locator('#statusText')).toContainText('Paused');
+
+            const before = await page.getAttribute('#soundBtn', 'aria-pressed');
+            await page.click('#soundBtn');
+            const after = await page.getAttribute('#soundBtn', 'aria-pressed');
+            expect(before).not.toBe(after);
+
+            await expect(page.locator('#speed')).toHaveText(/^\d+$/);
+
+            await page.screenshot({ path: 'test-results/02-after-interactions.png', fullPage: true });
+          });
+          EOF
+
           python3 -m http.server 8080 &
           SERVER_PID=$!
           trap "kill $SERVER_PID" EXIT
 
           sleep 2
-          npx --yes --package=playwright@1.54.2 node <<'EOF'
-          const { chromium } = require('playwright');
+          npx --yes --package=@playwright/test@1.54.2 --package=playwright@1.54.2 playwright test .github/tests/ui.spec.js --reporter=html --output=test-results
 
-          async function run() {
-            const browser = await chromium.launch({ headless: true });
-            const page = await browser.newPage();
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: playwright-report/
+          if-no-files-found: warn
 
-            await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' });
-
-            const title = await page.title();
-            if (!title.includes('Hackathon Snake')) {
-              throw new Error(`Unexpected page title: ${title}`);
-            }
-
-            await page.click('#startBtn');
-            await page.waitForTimeout(200);
-
-            const startText = (await page.textContent('#startBtn')).trim();
-            if (startText !== 'Restart') {
-              throw new Error(`Expected start button text to be Restart, got: ${startText}`);
-            }
-
-            await page.click('#pauseBtn');
-            await page.waitForTimeout(100);
-            const pausedStatus = (await page.textContent('#statusText')).trim();
-            if (!pausedStatus.toLowerCase().includes('paused')) {
-              throw new Error(`Expected paused status, got: ${pausedStatus}`);
-            }
-
-            const initialSoundState = await page.getAttribute('#soundBtn', 'aria-pressed');
-            await page.click('#soundBtn');
-            await page.waitForTimeout(100);
-            const nextSoundState = await page.getAttribute('#soundBtn', 'aria-pressed');
-            if (initialSoundState === nextSoundState) {
-              throw new Error('Sound toggle did not change state.');
-            }
-
-            const speedText = (await page.textContent('#speed')).trim();
-            if (!/^\d+$/.test(speedText)) {
-              throw new Error(`Expected integer speed display, got: ${speedText}`);
-            }
-
-            await browser.close();
-          }
-
-          run().catch((error) => {
-            console.error(error);
-            process.exit(1);
-          });
-          EOF
+      - name: Upload Playwright screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: test-results/
+          if-no-files-found: warn
