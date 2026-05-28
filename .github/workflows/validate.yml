@@ -40,8 +40,13 @@ jobs:
           curl --fail --silent http://127.0.0.1:8080/ > /tmp/page.html
           grep -q '<canvas' /tmp/page.html
 
+      - name: Install Playwright packages
+        run: |
+          npm init -y
+          npm install --no-save @playwright/test@1.54.2 playwright@1.54.2
+
       - name: Install Playwright browser
-        run: npx --yes --package=playwright@1.54.2 playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Run UI interaction checks with Playwright report
         run: |
@@ -81,7 +86,7 @@ jobs:
           trap "kill $SERVER_PID" EXIT
 
           sleep 2
-          npx --yes --package=@playwright/test@1.54.2 --package=playwright@1.54.2 playwright test .github/tests/ui.spec.js --reporter=html --output=test-results
+          npx playwright test .github/tests/ui.spec.js --reporter=html --output=test-results
 
       - name: Upload Playwright HTML report
         if: always()
