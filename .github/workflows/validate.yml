@@ -16,6 +16,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Verify required files exist
         run: |
           test -f index.html
@@ -34,3 +39,64 @@ jobs:
           sleep 2
           curl --fail --silent http://127.0.0.1:8080/ > /tmp/page.html
           grep -q '<canvas' /tmp/page.html
+
+      - name: Install Playwright browser
+        run: npx --yes playwright@1.54.2 install --with-deps chromium
+
+      - name: Run UI interaction checks
+        run: |
+          python3 -m http.server 8080 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID" EXIT
+
+          sleep 2
+          npx --yes --package=playwright@1.54.2 node <<'EOF'
+          const { chromium } = require('playwright');
+
+          async function run() {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+
+            await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' });
+
+            const title = await page.title();
+            if (!title.includes('Hackathon Snake')) {
+              throw new Error(`Unexpected page title: ${title}`);
+            }
+
+            await page.click('#startBtn');
+            await page.waitForTimeout(200);
+
+            const startText = (await page.textContent('#startBtn')).trim();
+            if (startText !== 'Restart') {
+              throw new Error(`Expected start button text to be Restart, got: ${startText}`);
+            }
+
+            await page.click('#pauseBtn');
+            await page.waitForTimeout(100);
+            const pausedStatus = (await page.textContent('#statusText')).trim();
+            if (!pausedStatus.toLowerCase().includes('paused')) {
+              throw new Error(`Expected paused status, got: ${pausedStatus}`);
+            }
+
+            const initialSoundState = await page.getAttribute('#soundBtn', 'aria-pressed');
+            await page.click('#soundBtn');
+            await page.waitForTimeout(100);
+            const nextSoundState = await page.getAttribute('#soundBtn', 'aria-pressed');
+            if (initialSoundState === nextSoundState) {
+              throw new Error('Sound toggle did not change state.');
+            }
+
+            const speedText = (await page.textContent('#speed')).trim();
+            if (!/^\d+$/.test(speedText)) {
+              throw new Error(`Expected integer speed display, got: ${speedText}`);
+            }
+
+            await browser.close();
+          }
+
+          run().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          EOF
